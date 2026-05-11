@@ -126,6 +126,11 @@ const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
 const clone = (value) => JSON.parse(JSON.stringify(value));
 
+function on(selector, eventName, handler) {
+  const element = $(selector);
+  if (element) element.addEventListener(eventName, handler);
+}
+
 function loadPrompts() {
   const saved = localStorage.getItem(STORAGE_KEYS.prompts);
   if (!saved) return clone(DEFAULT_PROMPTS);
@@ -159,10 +164,15 @@ function saveAiSettings() {
 }
 
 function renderAiSettings() {
-  $("#apiProvider").value = state.aiSettings.provider;
-  $("#apiEndpoint").value = state.aiSettings.endpoint;
-  $("#apiModel").value = state.aiSettings.model;
-  $("#apiKey").value = state.aiSettings.apiKey;
+  const provider = $("#apiProvider");
+  const endpoint = $("#apiEndpoint");
+  const model = $("#apiModel");
+  const apiKey = $("#apiKey");
+
+  if (provider) provider.value = state.aiSettings.provider;
+  if (endpoint) endpoint.value = state.aiSettings.endpoint;
+  if (model) model.value = state.aiSettings.model;
+  if (apiKey) apiKey.value = state.aiSettings.apiKey;
 }
 
 function renderPromptEditor() {
@@ -529,7 +539,8 @@ function wireEvents() {
       $$(".nav-tab").forEach((item) => item.classList.remove("active"));
       $$(".view").forEach((view) => view.classList.remove("active"));
       tab.classList.add("active");
-      $(`#${tab.dataset.view}View`).classList.add("active");
+      const targetView = $(`#${tab.dataset.view}View`);
+      if (targetView) targetView.classList.add("active");
     });
   });
 
@@ -551,39 +562,39 @@ function wireEvents() {
     });
   });
 
-  $("#savePromptBtn").addEventListener("click", () => {
+  on("#savePromptBtn", "click", () => {
     state.prompts[state.selectedPrompt].text = $("#promptEditor").value;
     savePrompts();
     renderPromptEditor();
   });
 
-  $("#resetPromptBtn").addEventListener("click", () => {
+  on("#resetPromptBtn", "click", () => {
     state.prompts[state.selectedPrompt] = clone(DEFAULT_PROMPTS[state.selectedPrompt]);
     renderPromptEditor();
   });
 
-  $("#testPromptBtn").addEventListener("click", testPrompt);
-  $("#generateJdBtn").addEventListener("click", generateJdOutputs);
-  $("#generateResumeBtn").addEventListener("click", generateResumeOutput);
-  $("#saveAiSettingsBtn").addEventListener("click", () => {
+  on("#testPromptBtn", "click", testPrompt);
+  on("#generateJdBtn", "click", generateJdOutputs);
+  on("#generateResumeBtn", "click", generateResumeOutput);
+  on("#saveAiSettingsBtn", "click", () => {
     state.aiSettings.provider = $("#apiProvider").value;
     state.aiSettings.endpoint = $("#apiEndpoint").value.trim();
     state.aiSettings.model = $("#apiModel").value.trim();
     state.aiSettings.apiKey = $("#apiKey").value.trim();
     saveAiSettings();
   });
-  $("#apiProvider").addEventListener("change", () => {
+  on("#apiProvider", "change", () => {
     const provider = $("#apiProvider").value;
     $("#apiModel").value = PROVIDER_DEFAULT_MODELS[provider] || PROVIDER_DEFAULT_MODELS.custom;
   });
-  $("#clearAiSettingsBtn").addEventListener("click", () => {
+  on("#clearAiSettingsBtn", "click", () => {
     state.aiSettings = clone(DEFAULT_AI_SETTINGS);
     state.aiSettings.apiKey = "";
     localStorage.removeItem(STORAGE_KEYS.aiSettings);
     renderAiSettings();
     $("#aiSettingsStatus").innerHTML = `<div class="warning">模型设置已清空。重新填写并保存后才能真实生成。</div>`;
   });
-  $("#testAiSettingsBtn").addEventListener("click", async () => {
+  on("#testAiSettingsBtn", "click", async () => {
     state.aiSettings.provider = $("#apiProvider").value;
     state.aiSettings.endpoint = $("#apiEndpoint").value.trim();
     state.aiSettings.model = $("#apiModel").value.trim();
@@ -607,17 +618,17 @@ function wireEvents() {
       setLoading(button, false);
     }
   });
-  $("#clearJdBtn").addEventListener("click", () => {
+  on("#clearJdBtn", "click", () => {
     $("#jdInput").value = "";
   });
 
-  $("#resumeFile").addEventListener("change", async (event) => {
+  on("#resumeFile", "change", async (event) => {
     const file = event.target.files[0];
     if (!file) return;
     $("#resumeInput").value = await file.text();
   });
 
-  $("#copyResumeBtn").addEventListener("click", async () => {
+  on("#copyResumeBtn", "click", async () => {
     try {
       await navigator.clipboard.writeText($("#resumeResult").innerText);
     } catch {
@@ -625,14 +636,22 @@ function wireEvents() {
     }
   });
 
-  $("#saveHistoryBtn").addEventListener("click", saveHistory);
-  $("#clearHistoryBtn").addEventListener("click", () => {
+  on("#saveHistoryBtn", "click", saveHistory);
+  on("#clearHistoryBtn", "click", () => {
     localStorage.removeItem(STORAGE_KEYS.history);
     renderHistory();
   });
 }
 
-wireEvents();
-renderPromptEditor();
-renderAiSettings();
-renderHistory();
+try {
+  wireEvents();
+  renderPromptEditor();
+  renderAiSettings();
+  renderHistory();
+} catch (error) {
+  document.body.insertAdjacentHTML(
+    "afterbegin",
+    `<div class="warning" style="margin: 16px;">页面脚本初始化失败：${escapeHtml(error.message)}。请确认部署的是最新版本，且 index.html 和 app.js 来自同一次提交。</div>`,
+  );
+  console.error(error);
+}

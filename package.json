@@ -1,0 +1,17 @@
+{
+  "name": "buxiang-liulisuosuo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Prompt-driven personal job analysis and resume optimization workspace.",
+  "scripts": {
+    "start": "npx serve .",
+    "build": "echo \"Static site: no build step required\""
+  },
+  "keywords": [
+    "resume",
+    "job-description",
+    "prompt",
+    "career"
+  ],
+  "license": "UNLICENSED"
+}

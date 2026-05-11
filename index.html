@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="不想流离失所是一个 Prompt 驱动的个人求职工作台，用来解读 JD、描述岗位日常并优化简历文案。"
+    />
+    <title>不想流离失所</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Personal job survival desk</p>
+          <h1>不想流离失所</h1>
+        </div>
+        <nav class="nav-tabs" aria-label="主导航">
+          <button class="nav-tab active" data-view="workspace">工作台</button>
+          <button class="nav-tab" data-view="prompts">Prompt 配置</button>
+          <button class="nav-tab" data-view="settings">模型设置</button>
+          <button class="nav-tab" data-view="history">历史记录</button>
+        </nav>
+      </header>
+
+      <main>
+        <section id="workspaceView" class="view active" aria-labelledby="workspaceTitle">
+          <div class="section-head">
+            <div>
+              <h2 id="workspaceTitle">JD 分析与简历优化工作台</h2>
+              <p>输入 JD 后生成岗位解读和岗位日常；再输入简历，生成贴合岗位的优化文案。</p>
+            </div>
+            <div class="status-pill" id="promptStatus">已加载默认 Prompt</div>
+          </div>
+
+          <div class="workspace-grid">
+            <section class="panel input-panel">
+              <div class="panel-title">
+                <span class="step">1</span>
+                <h3>输入 JD</h3>
+              </div>
+              <textarea id="jdInput" class="text-input tall" placeholder="粘贴岗位 JD 文字描述，例如岗位职责、任职要求、公司介绍等..."></textarea>
+              <div class="button-row">
+                <button class="ghost-btn" id="clearJdBtn">清空</button>
+                <button class="primary-btn" id="generateJdBtn">按 Prompt 生成</button>
+              </div>
+            </section>
+
+            <section class="panel output-panel">
+              <div class="panel-title">
+                <span class="step">2</span>
+                <h3>生成结果</h3>
+              </div>
+              <div class="result-tabs" role="tablist" aria-label="JD 输出结果">
+                <button class="result-tab active" data-result="meaning">JD 到底在说什么</button>
+                <button class="result-tab" data-result="day">岗位典型的一天</button>
+              </div>
+              <article id="meaningResult" class="result-card active">
+                <div class="empty-state">
+                  <strong>等待 JD 输入</strong>
+                  <p>点击「按 Prompt 生成」后，这里会使用 Prompt 1 输出岗位大白话解读。</p>
+                </div>
+              </article>
+              <article id="dayResult" class="result-card">
+                <div class="empty-state">
+                  <strong>等待 JD 输入</strong>
+                  <p>点击「按 Prompt 生成」后，这里会使用 Prompt 2 输出岗位的一天。</p>
+                </div>
+              </article>
+            </section>
+          </div>
+
+          <div class="workspace-grid resume-row">
+            <section class="panel input-panel">
+              <div class="panel-title">
+                <span class="step">3</span>
+                <h3>上传 / 粘贴简历</h3>
+              </div>
+              <textarea id="resumeInput" class="text-input" placeholder="粘贴你的文字版简历，或只粘贴某段工作经历..."></textarea>
+              <div class="button-row">
+                <label class="ghost-btn file-btn" for="resumeFile">上传文件</label>
+                <input id="resumeFile" type="file" accept=".txt,.md,.text" />
+                <button class="primary-btn" id="generateResumeBtn">按 Prompt 优化</button>
+              </div>
+            </section>
+
+            <section class="panel output-panel">
+              <div class="panel-title">
+                <span class="step">4</span>
+                <h3>简历优化结果</h3>
+              </div>
+              <article id="resumeResult" class="result-card active">
+                <div class="empty-state">
+                  <strong>等待简历输入</strong>
+                  <p>这里会使用 Prompt 3，并结合当前 JD 与简历生成优化结果。</p>
+                </div>
+              </article>
+              <div class="button-row output-actions">
+                <button class="ghost-btn" id="copyResumeBtn">复制结果</button>
+                <button class="ghost-btn" id="saveHistoryBtn">保存到历史</button>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section id="promptsView" class="view" aria-labelledby="promptsTitle">
+          <div class="section-head">
+            <div>
+              <h2 id="promptsTitle">Prompt 配置中心</h2>
+              <p>所有正式输出都读取这里已保存的 Prompt。Prompt 改了，输出规则就跟着变。</p>
+            </div>
+            <button class="primary-btn" id="savePromptBtn">保存 Prompt</button>
+          </div>
+
+          <div class="prompt-layout">
+            <aside class="prompt-list" aria-label="Prompt 类型">
+              <button class="prompt-item active" data-prompt="meaning">
+                <span>Prompt 1</span>
+                JD 到底在说什么
+              </button>
+              <button class="prompt-item" data-prompt="day">
+                <span>Prompt 2</span>
+                岗位典型的一天
+              </button>
+              <button class="prompt-item" data-prompt="resume">
+                <span>Prompt 3</span>
+                简历修改要求
+              </button>
+            </aside>
+
+            <section class="panel prompt-editor">
+              <div class="prompt-meta">
+                <div>
+                  <p class="eyebrow">当前编辑</p>
+                  <h3 id="promptName">JD 到底在说什么</h3>
+                </div>
+                <div class="variable-box" id="variableBox">{{JD_TEXT}}</div>
+              </div>
+              <textarea id="promptEditor" class="text-input prompt-area"></textarea>
+              <div class="button-row">
+                <button class="ghost-btn" id="resetPromptBtn">恢复默认</button>
+                <button class="ghost-btn" id="testPromptBtn">测试 Prompt</button>
+              </div>
+              <div class="rule-box">
+                <strong>执行规则</strong>
+                <p>正式生成时会先读取已保存 Prompt，再替换变量。缺少必要变量时，系统会阻止生成。</p>
+              </div>
+            </section>
+          </div>
+
+          <section class="panel test-panel">
+            <div class="panel-title">
+              <h3>Prompt 测试结果</h3>
+            </div>
+            <article id="promptTestResult" class="result-card active">
+              <div class="empty-state">
+                <strong>还没有测试</strong>
+                <p>测试只预览当前编辑内容，不会覆盖工作台正式输出，也不会自动保存。</p>
+              </div>
+            </article>
+          </section>
+        </section>
+
+        <section id="settingsView" class="view" aria-labelledby="settingsTitle">
+          <div class="section-head">
+            <div>
+              <h2 id="settingsTitle">模型设置</h2>
+              <p>配置发布环境里的生成接口后，工作台会把已保存 Prompt 发送给模型并展示真实生成结果。</p>
+            </div>
+            <button class="primary-btn" id="saveAiSettingsBtn">保存设置</button>
+          </div>
+
+          <section class="panel settings-panel">
+            <label class="field-label" for="apiProvider">模型服务商</label>
+            <select id="apiProvider" class="text-field">
+              <option value="openai">OpenAI</option>
+              <option value="deepseek">DeepSeek</option>
+              <option value="qwen">通义千问 DashScope</option>
+              <option value="moonshot">Moonshot Kimi</option>
+              <option value="zhipu">智谱 GLM</option>
+              <option value="custom">自定义 OpenAI-compatible</option>
+            </select>
+
+            <label class="field-label" for="apiEndpoint">接口地址</label>
+            <input
+              id="apiEndpoint"
+              class="text-field"
+              type="text"
+              placeholder="/api/generate 或 /.netlify/functions/generate"
+            />
+
+            <label class="field-label" for="apiModel">模型名称</label>
+            <input id="apiModel" class="text-field" type="text" placeholder="例如：gpt-4o-mini" />
+
+            <label class="field-label" for="apiKey">API Key</label>
+            <input id="apiKey" class="text-field" type="password" placeholder="如果使用站内 Serverless 接口，可以留空" />
+
+            <div class="button-row">
+              <button class="ghost-btn" id="clearAiSettingsBtn">清空设置</button>
+              <button class="ghost-btn" id="testAiSettingsBtn">测试连接</button>
+            </div>
+
+            <div class="rule-box">
+              <strong>发布版说明</strong>
+              <p>推荐使用默认的 Vercel 接口 /api/generate。选择不同模型服务商后，在发布平台配置对应环境变量即可。Netlify 发布时把接口地址改成 /.netlify/functions/generate。</p>
+            </div>
+          </section>
+
+          <section class="panel test-panel">
+            <div class="panel-title">
+              <h3>连接状态</h3>
+            </div>
+            <article id="aiSettingsStatus" class="result-card active">
+              <div class="empty-state">
+                <strong>等待配置</strong>
+                <p>保存接口地址、模型名和 API Key 后，就可以在工作台真实生成结果。</p>
+              </div>
+            </article>
+          </section>
+        </section>
+
+        <section id="historyView" class="view" aria-labelledby="historyTitle">
+          <div class="section-head">
+            <div>
+              <h2 id="historyTitle">历史记录</h2>
+              <p>保存过的 JD、岗位解读和简历优化结果会出现在这里。</p>
+            </div>
+            <button class="ghost-btn" id="clearHistoryBtn">清空历史</button>
+          </div>
+          <div id="historyList" class="history-list"></div>
+        </section>
+      </main>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

@@ -22,8 +22,8 @@
 1. 把本目录推送到 GitHub 仓库。
 2. 打开 Vercel，New Project，导入仓库。
 3. Framework Preset 选择 `Other`。
-4. Build Command 留空。
-5. Output Directory 填 `.`。
+4. Build Command 使用仓库里的 `vercel.json` 自动配置。
+5. Output Directory 使用仓库里的 `vercel.json` 自动配置为 `public`。
 6. 在 Environment Variables 添加你要使用的模型服务商密钥：
 
 ```text

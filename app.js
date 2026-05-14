@@ -123,8 +123,10 @@ const state = {
 };
 
 const $ = (selector) => document.querySelector(selector);
-const $$ = (selector) => [...document.querySelectorAll(selector)];
+const $$ = (selector) => Array.prototype.slice.call(document.querySelectorAll(selector));
 const clone = (value) => JSON.parse(JSON.stringify(value));
+const merge = (base, extra) => Object.assign(clone(base), extra || {});
+const replaceToken = (text, token, value) => String(text).split(token).join(value);
 
 function on(selector, eventName, handler) {
   const element = $(selector);
@@ -136,7 +138,7 @@ function loadPrompts() {
   if (!saved) return clone(DEFAULT_PROMPTS);
 
   try {
-    return { ...clone(DEFAULT_PROMPTS), ...JSON.parse(saved) };
+    return merge(DEFAULT_PROMPTS, JSON.parse(saved));
   } catch {
     return clone(DEFAULT_PROMPTS);
   }
@@ -152,7 +154,7 @@ function loadAiSettings() {
   if (!saved) return clone(DEFAULT_AI_SETTINGS);
 
   try {
-    return { ...clone(DEFAULT_AI_SETTINGS), ...JSON.parse(saved) };
+    return merge(DEFAULT_AI_SETTINGS, JSON.parse(saved));
   } catch {
     return clone(DEFAULT_AI_SETTINGS);
   }
@@ -212,9 +214,7 @@ function buildPrompt(type) {
   const jd = $("#jdInput").value.trim();
   const resume = $("#resumeInput").value.trim();
 
-  return state.prompts[type].text
-    .replaceAll("{{JD_TEXT}}", jd)
-    .replaceAll("{{RESUME_TEXT}}", resume);
+  return replaceToken(replaceToken(state.prompts[type].text, "{{JD_TEXT}}", jd), "{{RESUME_TEXT}}", resume);
 }
 
 function promptRuleNote(type) {
@@ -237,28 +237,35 @@ async function callModel(prompt) {
   const settingsError = validateAiSettings();
   if (settingsError) throw new Error(settingsError);
   const useServerlessAdapter = state.aiSettings.endpoint.startsWith("/");
+  const headers = {
+    "Content-Type": "application/json"
+  };
+  const payload = {
+    model: state.aiSettings.model,
+    messages: [
+      {
+        role: "system",
+        content: "你是一个严谨的中文求职助手。必须严格遵循用户提供的 Prompt，不要额外扩展 Prompt 没要求的结构。"
+      },
+      {
+        role: "user",
+        content: prompt
+      }
+    ],
+    temperature: 0.4
+  };
+
+  if (state.aiSettings.apiKey) {
+    headers.Authorization = `Bearer ${state.aiSettings.apiKey}`;
+  }
+  if (useServerlessAdapter) {
+    payload.provider = state.aiSettings.provider;
+  }
 
   const response = await fetch(state.aiSettings.endpoint, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(state.aiSettings.apiKey ? { Authorization: `Bearer ${state.aiSettings.apiKey}` } : {}),
-    },
-    body: JSON.stringify({
-      ...(useServerlessAdapter ? { provider: state.aiSettings.provider } : {}),
-      model: state.aiSettings.model,
-      messages: [
-        {
-          role: "system",
-          content: "你是一个严谨的中文求职助手。必须严格遵循用户提供的 Prompt，不要额外扩展 Prompt 没要求的结构。",
-        },
-        {
-          role: "user",
-          content: prompt,
-        },
-      ],
-      temperature: 0.4,
-    }),
+    headers,
+    body: JSON.stringify(payload)
   });
 
   if (!response.ok) {
@@ -267,7 +274,7 @@ async function callModel(prompt) {
   }
 
   const data = await response.json();
-  const content = data?.choices?.[0]?.message?.content;
+  const content = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
   if (!content) throw new Error("模型没有返回可展示的内容。");
   return content;
 }
@@ -460,7 +467,7 @@ function testPrompt() {
 
   const jd = $("#jdInput").value.trim() || "这里会替换为工作台中的 JD 文本。";
   const resume = $("#resumeInput").value.trim() || "这里会替换为工作台中的简历文本。";
-  const compiled = editorValue.replaceAll("{{JD_TEXT}}", jd).replaceAll("{{RESUME_TEXT}}", resume);
+  const compiled = replaceToken(replaceToken(editorValue, "{{JD_TEXT}}", jd), "{{RESUME_TEXT}}", resume);
 
   $("#promptTestResult").innerHTML = `
     <h4>测试通过</h4>
@@ -526,11 +533,11 @@ function renderHistory() {
 
 function escapeHtml(text) {
   return String(text)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 function wireEvents() {
@@ -651,7 +658,7 @@ try {
 } catch (error) {
   document.body.insertAdjacentHTML(
     "afterbegin",
-    `<div class="warning" style="margin: 16px;">页面脚本初始化失败：${escapeHtml(error.message)}。请确认部署的是最新版本，且 index.html 和 app.js 来自同一次提交。</div>`,
+    `<div class="warning" style="margin: 16px;">页面脚本初始化失败：${escapeHtml(error.message)}。请确认部署的是最新版本，且 index.html 和 app.js 来自同一次提交。</div>`
   );
   console.error(error);
 }
